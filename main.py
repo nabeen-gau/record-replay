@@ -12,9 +12,8 @@ from enum import Enum, auto
 stop_key = Key.f12
 record_key = Key.f11
 play_key = Key.f10
-recording = False
-fps = 60
-wait_time = 0.1#s
+fps = 60 # No. of times input is checked per second
+wait_time = 0.1#s (Time delay between each action)
 
 start_recording = False
 stop_running = False
@@ -36,6 +35,7 @@ class ActionName(Enum):
     KeyBoardKey = auto()
     SpecialKey = auto()
     ModiferKey = auto()
+    Wait = auto()
 
 class SpecialKey(Enum):
     Null = auto()
@@ -70,13 +70,15 @@ class Action:
     key = None
     modifier_key: list[Key] = []
     special: Key = None
+    value: float = 0.0
 
     def __repr__(self) -> str:
         if (self.name == ActionName.NoAction): return ""
         elif (self.name == ActionName.KeyBoardKey): 
-            if (self.key): return f"Key <{self.key}>"
+            if (self.key): return f"Key <{self.key}> <{self.key_state}>"
             else: return "Error"
         elif (self.name == ActionName.ModiferKey): return f"Mod <{self.key.name} {self.key_state}>"
+        elif (self.name == ActionName.Wait): return f"Delay({self.value:.2}s)"
         return f"{self.name} {self.key_state} at {self.position}"
 
 action_list = []
@@ -101,8 +103,10 @@ def on_click(x, y, button, pressed):
         a.name = ActionName.LClick
     if pressed:
         a.key_state = KeyState.Pressed
+        add_wait_time()
     else:
         a.key_state = KeyState.Released
+        init_wait_time()
     if (a.name != ActionName.NoAction): 
         action_list.append(a)
 
@@ -114,12 +118,24 @@ def on_scroll(x, y, dx, dy):
         'down' if dy < 0 else 'up',
         (x, y)))
 
+start_time = 0.0
+timer_started = False
+def init_wait_time():
+    global start_time, timer_started
+    start_time = time.time()
+    timer_started = True
+
+def add_wait_time():
+    global start_time, timer_started
+    if timer_started: timer_started = False
+    else: return
+    current_time = time.time()
+    a = Action()
+    a.name = ActionName.Wait
+    a.value = current_time - start_time
+    action_list.append(a)
+
 def on_press(key):
-    # try:
-    #     print(ord(key.char), key.char)
-    #     print(key.vk, chr(key.vk))
-    # except:
-    #     pass
     global play_recording, start_recording, stop_running
     if play_recording: return
     if (key == record_key):
@@ -129,22 +145,31 @@ def on_press(key):
             action_list.clear()
         else:
             recording_stopped_msg()
+        return
     elif (key == stop_key):
         print(f"<{stop_key.name}> pressed. Exiting.")
         stop_running = True
         return False
-    elif (key == play_key): 
+    elif (key == play_key and not play_recording and not start_recording): 
         print("Playing recorded keys..", end="")
+        print("\n----------------------")
+        for action in action_list:
+            print(f"\t{action}")
+        print("----------------------")
         play_recording = True
         return
     if not start_recording: return
+    print(key)
+    add_wait_time()
     add_key(key, KeyState.Pressed)
 
 def on_release(key):
     global play_recording, start_recording
     if play_recording: return
     if not start_recording: return
+    if (key == record_key): return
     add_key(key, KeyState.Released)
+    init_wait_time()
 
 def add_key(key, state: KeyState):
     global stop_running, play_recording
@@ -169,6 +194,7 @@ def add_key(key, state: KeyState):
         # TODO: this is only recording the released special key
         elif (state == KeyState.Released):
             # handle Ctrl+key
+            if (key == record_key): return
             a = Action()
             a.name = ActionName.SpecialKey
             a.key_state = state
@@ -213,11 +239,15 @@ def play_events():
             play_special_action(action)
         elif action.name == ActionName.ModiferKey:
             play_keyboard_action(action)
+        elif action.name == ActionName.Wait:
+            time.sleep(action.value)
         else:
             play_mouse_action(action)
         time.sleep(wait_time)
     play_recording = False
     print("Done.")
+    global timer_started
+    timer_started = False
     start_recording_msg()
 
 def main():
