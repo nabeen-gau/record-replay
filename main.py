@@ -9,12 +9,18 @@ from pynput.keyboard import Key
 from pynput.keyboard import Controller as key_controller
 from enum import Enum, auto
 
-stop_key = Key.f12
-record_key = Key.f11
-play_key = Key.f10
-fps = 60 # No. of times input is checked per second
-wait_time = 0.1#s (Time delay between each action)
+# Global vars
+stop_key = Key.f12   # key to quit the program
+record_key = Key.f11 # key to start/stop recording
+play_key = Key.f10   # key to replay saved recording
 
+manual_delay = False # manual_delay = False means wait_time is according to the actual time delay when
+                     # recording but speed_factor is applied
+fps = 60             # No. of times input is checked per second
+wait_time = 0.1      # Time delay (in sec) between each action when manual_delay is True
+speed_factor = 1.5   # factor by which action delay are reduced when manual_delay is False
+
+# global state
 start_recording = False
 stop_running = False
 play_recording = False
@@ -36,15 +42,6 @@ class ActionName(Enum):
     SpecialKey = auto()
     ModiferKey = auto()
     Wait = auto()
-
-class SpecialKey(Enum):
-    Null = auto()
-    LCtrl = auto()
-    LShift = auto()
-    LAlt = auto()
-    RCtrl = auto()
-    RShift = auto()
-    RAlt = auto()
 
 class KeyState(Enum):
     Null = auto()
@@ -239,11 +236,11 @@ def play_events():
             play_special_action(action)
         elif action.name == ActionName.ModiferKey:
             play_keyboard_action(action)
-        elif action.name == ActionName.Wait:
-            time.sleep(action.value)
+        elif (action.name == ActionName.Wait and not manual_delay):
+            time.sleep(action.value/speed_factor)
         else:
             play_mouse_action(action)
-        time.sleep(wait_time)
+        if (manual_delay): time.sleep(wait_time)
     play_recording = False
     print("Done.")
     global timer_started
