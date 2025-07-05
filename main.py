@@ -22,6 +22,7 @@ manual_delay = False # manual_delay = False means wait_time is according to the 
 fps = 60             # No. of times input is checked per second
 wait_time = 0.1      # Time delay (in sec) between each action when manual_delay is True
 speed_factor = 1.5   # factor by which action delay are reduced when manual_delay is False
+repeat = 1           # no. of times the recording is to be repeated
 
 # global state
 start_recording = False
@@ -236,7 +237,7 @@ def play_special_action(action: Action):
     kc.press(action.special)
     kc.release(action.special)
 
-def play_events():
+def play_events(idx: int, name: str):
     global play_recording
     for action in action_list:
         if action.name == ActionName.NoAction:
@@ -252,7 +253,7 @@ def play_events():
         elif (action.name == ActionName.ScreenShot):
             if (not os.path.exists(screen_shot_dir)): os.mkdir(screen_shot_dir)
             img = pag.screenshot()
-            img.save(os.path.join(screen_shot_dir, "img.png"))
+            img.save(os.path.join(screen_shot_dir, f"img_{name}_{idx+1}.png"))
         else:
             play_mouse_action(action)
         if (manual_delay): time.sleep(wait_time)
@@ -260,7 +261,6 @@ def play_events():
     print("Done.")
     global timer_started
     timer_started = False
-    start_recording_msg()
 
 def main():
     global stop_running, play_recording
@@ -277,7 +277,10 @@ def main():
         start_recording_msg()
         while (not stop_running):
             if (play_recording):
-                play_events()
+                name = time.time()
+                for i in range(repeat):
+                    play_events(i, str(name))
+                start_recording_msg()
             time.sleep(1/fps)
     except KeyboardInterrupt:
         pass
