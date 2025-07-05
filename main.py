@@ -1,7 +1,7 @@
 import pyautogui as pag
-import keyboard as kb
 import time
 import sys
+import os
 from pynput import mouse
 from pynput import keyboard
 from pynput.mouse import Button, Controller
@@ -10,9 +10,12 @@ from pynput.keyboard import Controller as key_controller
 from enum import Enum, auto
 
 # Global vars
-stop_key = Key.f12   # key to quit the program
-record_key = Key.f11 # key to start/stop recording
-play_key = Key.f10   # key to replay saved recording
+stop_key = Key.f12       # key to quit the program
+record_key = Key.f11     # key to start/stop recording
+play_key = Key.f10       # key to replay saved recording
+screen_shot_key = Key.f8 # key that maps to pag.screenshot()
+
+screen_shot_dir = "./screenshots"
 
 manual_delay = False # manual_delay = False means wait_time is according to the actual time delay when
                      # recording but speed_factor is applied
@@ -42,6 +45,7 @@ class ActionName(Enum):
     SpecialKey = auto()
     ModiferKey = auto()
     Wait = auto()
+    ScreenShot = auto()
 
 class KeyState(Enum):
     Null = auto()
@@ -180,7 +184,14 @@ def add_key(key, state: KeyState):
         a.key_state = state
         action_list.append(a)
     except AttributeError:
-        if ( key == Key.ctrl_l or key == Key.ctrl_r or
+        if (key == screen_shot_key and state == KeyState.Pressed):
+            if (not os.path.exists(screen_shot_dir)): os.mkdir(screen_shot_dir)
+            img = pag.screenshot()
+            img.save(os.path.join(screen_shot_dir, "img.png"))
+            a = Action()
+            a.name = ActionName.ScreenShot
+            action_list.append(a)
+        elif ( key == Key.ctrl_l or key == Key.ctrl_r or
         key == Key.alt_l or key == Key.alt_r or
         key == Key.shift_l or key == Key.shift_r):
             a = Action()
@@ -238,6 +249,10 @@ def play_events():
             play_keyboard_action(action)
         elif (action.name == ActionName.Wait and not manual_delay):
             time.sleep(action.value/speed_factor)
+        elif (action.name == ActionName.ScreenShot):
+            if (not os.path.exists(screen_shot_dir)): os.mkdir(screen_shot_dir)
+            img = pag.screenshot()
+            img.save(os.path.join(screen_shot_dir, "img.png"))
         else:
             play_mouse_action(action)
         if (manual_delay): time.sleep(wait_time)
