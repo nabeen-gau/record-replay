@@ -14,6 +14,7 @@ stop_key = Key.f12       # key to quit the program
 record_key = Key.f11     # key to start/stop recording
 play_key = Key.f10       # key to replay saved recording
 screen_shot_key = Key.f8 # key that maps to pag.screenshot()
+reset_img_counter = Key.f9
 
 screen_shot_dir = "./screenshots"
 
@@ -30,7 +31,7 @@ stop_running = False
 play_recording = False
 
 def start_recording_msg():
-    print(f"Press <{record_key.name}> to start recording, <{stop_key.name}> to exit.");
+    print(f"Press <{record_key.name}> to start recording, <{stop_key.name}> to exit, <{screen_shot_key.name}> to take screenshot, <{reset_img_counter.name}> to reset image counter.");
 
 def stop_recording_msg():
     print(f"Recording started. Press <{record_key.name}> to stop recording.")
@@ -137,8 +138,11 @@ def add_wait_time():
     a.value = current_time - start_time
     action_list.append(a)
 
+global count;
+count = 0;
 def on_press(key):
     global play_recording, start_recording, stop_running
+    global count
     if play_recording: return
     if (key == record_key):
         start_recording = not start_recording
@@ -154,12 +158,17 @@ def on_press(key):
         return False
     elif (key == play_key and not play_recording and not start_recording): 
         print("Playing recorded keys..", end="")
-        print("\n----------------------")
-        for action in action_list:
-            print(f"\t{action}")
-        print("----------------------")
         play_recording = True
         return
+    elif (key == screen_shot_key):
+        name = f"img{count}.png"
+        img = pag.screenshot()
+        img.save(os.path.join(screen_shot_dir, name))
+        print("Screen shot saved as", name)
+        count+=1
+    elif (key == reset_img_counter):
+        count=0
+        print("Reset count to zero")
     if not start_recording: return
     print(key)
     add_wait_time()
@@ -202,7 +211,6 @@ def add_key(key, state: KeyState):
             action_list.append(a)
         # TODO: this is only recording the released special key
         elif (state == KeyState.Released):
-            # handle Ctrl+key
             if (key == record_key): return
             a = Action()
             a.name = ActionName.SpecialKey
